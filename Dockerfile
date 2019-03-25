@@ -124,19 +124,16 @@ RUN ipcluster nbextension enable
 ENV NB_USER jovyan
 RUN useradd -m -s /bin/bash -N jovyan
 USER $NB_USER
-ENV NB_WORK /workspace
+ENV NB_WORK /home/$NB_USER
 
 RUN ipython profile create --parallel --profile=mpi && \
-    echo "c.IPClusterEngines.engine_launcher_class = 'MPIEngineSetLauncher'" >> /home/$NB_USER/.ipython/profile_mpi/ipcluster_config.py
+    echo "c.IPClusterEngines.engine_launcher_class = 'MPIEngineSetLauncher'" >> $NB_WORK/.ipython/profile_mpi/ipcluster_config.py
 
 # note we also use xvfb which is required for viz
 ENTRYPOINT ["/usr/local/bin/tini", "--"]
 
 # copy this file over so that no password is required
-COPY jupyter_notebook_config.json /home/$NB_USER/.jupyter/jupyter_notebook_config.json
-
-# setup symlink for terminal convenience
-RUN ln -s $NB_WORK /home/$NB_USER/
+COPY jupyter_notebook_config.json $NB_WORK/.jupyter/jupyter_notebook_config.json
 
 # create a volume
 VOLUME $NB_WORK/user_data
@@ -146,6 +143,7 @@ WORKDIR $NB_WORK
 CMD ["jupyter", "notebook", "--ip='0.0.0.0'", "--no-browser"]
 
 USER root
+RUN chown -R $NB_USER:users $NB_WORK
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.5 1
 # install lavavu
 RUN pip3 install --no-cache-dir lavavu
@@ -158,7 +156,8 @@ RUN mkdir $UW2_DIR
 ENV PYTHONPATH $PYTHONPATH:$UW2_DIR
 
 # get underworld, compile, delete some unnecessary files, trust notebooks, copy to workspace
-RUN cd underworld2/libUnderworld && \
+RUN git clone -b development --depth 1  https://github.com/underworldcode/underworld2.git && \
+    cd underworld2/libUnderworld && \
     ./configure.py --with-debugging=1  && \
     ./compile.py                 && \
     rm -fr h5py_ext              && \
@@ -177,19 +176,17 @@ RUN cd underworld2/libUnderworld && \
 #    cd ../../docs/development/api_doc_generator/                     && \
 #    sphinx-build . ../../api_doc                                     && \
     find . -name \*.os |xargs rm -f                                  && \
-    cat .git/refs/heads/* > build_commit.txt                         && \
-    env > build_environment.txt                                      && \
-    chown -R $NB_USER:users $NB_WORK $UW2_DIR /home/$NB_USER
+    chown -R $NB_USER:users $NB_WORK $UW2_DIR
 
 RUN git clone https://github.com/underworldcode/UWGeodynamics.git && \
     pip3 install --no-cache-dir UWGeodynamics/ && \
-    mkdir /workspace/UWGeodynamics && \
-    mv ./UWGeodynamics/examples /workspace/UWGeodynamics/. && \
-    mv ./UWGeodynamics/tutorials /workspace/UWGeodynamics/. && \
-    mv ./UWGeodynamics/benchmarks /workspace/UWGeodynamics/. && \
-    mv ./UWGeodynamics/docs /workspace/UWGeodynamics/ && \
+    mkdir $NB_WORK/UWGeodynamics && \
+    mv ./UWGeodynamics/examples $NB_WORK/UWGeodynamics/. && \
+    mv ./UWGeodynamics/tutorials $NB_WORK/UWGeodynamics/. && \
+    mv ./UWGeodynamics/benchmarks $NB_WORK/UWGeodynamics/. && \
+    mv ./UWGeodynamics/docs $NB_WORK/UWGeodynamics/ && \
     rm -rf UWGeodynamics && \
-    chown -R $NB_USER:users /workspace/UWGeodynamics
+    chown -R $NB_USER:users $NB_WORK/UWGeodynamics
 
 # expose glucifer port
 EXPOSE 9999
