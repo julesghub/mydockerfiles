@@ -116,6 +116,8 @@ RUN curl -L https://github.com/krallin/tini/releases/download/v0.10.0/tini > tin
 
 # expose notebook port
 EXPOSE 8888
+# expose glucifer port
+EXPOSE 9999
 
 # Setup ipyparallel for mpi profile
 RUN ipcluster nbextension enable
@@ -175,21 +177,11 @@ RUN git clone -b development --depth 1  https://github.com/underworldcode/underw
     find $UW2_DIR/docs -name \*.ipynb  -print0 | xargs -0 jupyter trust && \
 #    cd ../../docs/development/api_doc_generator/                     && \
 #    sphinx-build . ../../api_doc                                     && \
-    find . -name \*.os |xargs rm -f                                  && \
-    chown -R $NB_USER:users $NB_WORK $UW2_DIR
+    find . -name \*.os |xargs rm -f
 
 RUN git clone https://github.com/underworldcode/UWGeodynamics.git && \
-    pip3 install --no-cache-dir UWGeodynamics/ && \
-    mkdir $NB_WORK/UWGeodynamics && \
-    mv ./UWGeodynamics/examples $NB_WORK/UWGeodynamics/. && \
-    mv ./UWGeodynamics/tutorials $NB_WORK/UWGeodynamics/. && \
-    mv ./UWGeodynamics/benchmarks $NB_WORK/UWGeodynamics/. && \
-    mv ./UWGeodynamics/docs $NB_WORK/UWGeodynamics/ && \
-    rm -rf UWGeodynamics && \
-    chown -R $NB_USER:users $NB_WORK/UWGeodynamics
+    pip3 install --no-cache-dir -e UWGeodynamics
 
-# expose glucifer port
-EXPOSE 9999
 
 # environment variable will internally run xvfb when glucifer is imported,
 # see /opt/underworld2/glucifer/__init__.py
